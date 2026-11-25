@@ -1,4 +1,4 @@
-package com.myhub.security;
+package com.myhub.entity;
 
 public record UserAccount(Long id, String username, String password, String nickname, String avatar, boolean enabled)
         implements org.springframework.security.core.userdetails.UserDetails {

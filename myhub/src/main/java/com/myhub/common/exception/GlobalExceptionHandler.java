@@ -1,7 +1,7 @@
 package com.myhub.common.exception;
 
-import com.myhub.common.response.Result;
-import com.myhub.common.response.ResultCode;
+import com.myhub.common.result.Result;
+import com.myhub.common.result.ResultCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;

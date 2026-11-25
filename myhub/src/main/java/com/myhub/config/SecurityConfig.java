@@ -1,7 +1,7 @@
-package com.myhub.security;
+package com.myhub.config;
 
 import tools.jackson.databind.ObjectMapper;
-import com.myhub.common.response.Result;
+import com.myhub.common.result.Result;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

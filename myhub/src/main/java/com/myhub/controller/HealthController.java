@@ -1,6 +1,6 @@
-package com.myhub.system.controller;
+package com.myhub.controller;
 
-import com.myhub.common.response.Result;
+import com.myhub.common.result.Result;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

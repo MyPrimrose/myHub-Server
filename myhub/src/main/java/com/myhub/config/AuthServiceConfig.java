@@ -1,4 +1,6 @@
-package com.myhub.security;
+package com.myhub.config;
+
+import com.myhub.entity.UserAccount;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
