@@ -1,13 +1,10 @@
-package com.yl.myhub;
+package com.myhub;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class MyhubApplicationTests {
-
+class MyHubApplicationTests {
     @Test
-    void contextLoads() {
-    }
-
+    void contextLoads() { }
 }
