@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myhub.mapper.UserMapper">
+    <resultMap id="userAccountResultMap" type="com.myhub.entity.UserAccount">
+        <constructor>
+            <idArg column="id" javaType="java.lang.Long"/>
+            <arg column="username" javaType="java.lang.String"/>
+            <arg column="password" javaType="java.lang.String"/>
+            <arg column="nickname" javaType="java.lang.String"/>
+            <arg column="avatar" javaType="java.lang.String"/>
+            <arg column="status" javaType="java.lang.Boolean"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectByUsername" resultMap="userAccountResultMap">
+        SELECT id, username, password, nickname, avatar, status
+        FROM sys_user
+        WHERE username = #{username}
+    </select>
+
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM sys_user
+    </select>
+
+    <insert id="insertInitialUser">
+        INSERT INTO sys_user(username, password, nickname, status)
+        VALUES(#{username}, #{password}, #{nickname}, 1)
+    </insert>
+
+    <update id="updateLastLogin">
+        UPDATE sys_user
+        SET last_login_time = #{loginTime}
+        WHERE id = #{id}
+    </update>
+</mapper>

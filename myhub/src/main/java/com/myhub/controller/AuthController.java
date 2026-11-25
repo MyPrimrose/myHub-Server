@@ -4,9 +4,9 @@ import com.myhub.common.result.Result;
 import com.myhub.dto.request.LoginRequest;
 import com.myhub.dto.response.CurrentUserResponse;
 import com.myhub.entity.UserAccount;
+import com.myhub.mapper.UserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,8 +21,8 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
-    private final AuthenticationManager manager; private final JdbcTemplate jdbc;
-    public AuthController(AuthenticationManager manager, JdbcTemplate jdbc) { this.manager=manager; this.jdbc=jdbc; }
+    private final AuthenticationManager manager; private final UserMapper userMapper;
+    public AuthController(AuthenticationManager manager, UserMapper userMapper) { this.manager=manager; this.userMapper=userMapper; }
     @GetMapping("/csrf") public Result<Map<String,String>> csrf(CsrfToken token) { return Result.success(Map.of("token", token.getToken(), "headerName", token.getHeaderName())); }
     @PostMapping("/login") public Result<CurrentUserResponse> login(@Valid @RequestBody LoginRequest body, HttpServletRequest request) {
         Authentication auth=manager.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(body.username(), body.password()));
@@ -32,7 +32,7 @@ public class AuthController {
         var session = request.getSession(true);
         request.changeSessionId();
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
-        UserAccount user=(UserAccount)auth.getPrincipal(); jdbc.update("UPDATE sys_user SET last_login_time=? WHERE id=?", LocalDateTime.now(), user.id());
+        UserAccount user=(UserAccount)auth.getPrincipal(); userMapper.updateLastLogin(user.id(), LocalDateTime.now());
         return new Result<>(200,"登录成功",CurrentUserResponse.from(user),System.currentTimeMillis());
     }
     @GetMapping("/me") public Result<CurrentUserResponse> me(Authentication auth) { return Result.success(CurrentUserResponse.from((UserAccount)auth.getPrincipal())); }
