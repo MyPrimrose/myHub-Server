@@ -10,7 +10,8 @@
             <arg column="password" javaType="java.lang.String"/>
             <arg column="nickname" javaType="java.lang.String"/>
             <arg column="avatar" javaType="java.lang.String"/>
-            <arg column="status" javaType="java.lang.Boolean"/>
+            <!-- UserAccount record uses primitive boolean for its enabled constructor argument. -->
+            <arg column="status" javaType="_boolean"/>
         </constructor>
     </resultMap>
 

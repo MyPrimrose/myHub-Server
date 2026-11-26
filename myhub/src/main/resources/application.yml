@@ -2,9 +2,9 @@ spring:
   application:
     name: myhub-server
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DB:myhub}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: ${MYSQL_USER}
-    password: ${MYSQL_PASS}
+    url: jdbc:mysql://127.0.0.1:3306/myhub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: yanglu-mysql
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: true
