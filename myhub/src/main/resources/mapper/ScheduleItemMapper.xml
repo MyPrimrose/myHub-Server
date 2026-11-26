@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myhub.mapper.ScheduleItemMapper">
+
+    <resultMap id="scheduleItemMap" type="com.myhub.entity.ScheduleItem">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="itemType" column="item_type"/>
+        <result property="description" column="description"/>
+        <result property="status" column="status"/>
+        <result property="priority" column="priority"/>
+        <result property="startAt" column="start_at"/>
+        <result property="endAt" column="end_at"/>
+        <result property="dueAt" column="due_at"/>
+        <result property="allDay" column="all_day"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="relatedPlanId" column="related_plan_id"/>
+        <result property="location" column="location"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="deleted" column="deleted"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="itemColumns">
+        id, title, item_type, description, status, priority,
+        start_at, end_at, due_at, all_day, category_id, related_plan_id,
+        location, sort_order, deleted, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="scheduleItemMap">
+        SELECT <include refid="itemColumns"/>
+        FROM sys_schedule_item
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!--
+      Timeline overlap rules (Asia/Shanghai wall times stored as DATETIME):
+      1) Range items: COALESCE(start_at, end_at, due_at) <= endDate
+         AND COALESCE(end_at, start_at, due_at) >= startDate
+      2) Exclude undated tasks (no start/end/due).
+      3) Plans always have start/end after validation.
+    -->
+    <select id="selectTimelineItems" resultMap="scheduleItemMap">
+        SELECT <include refid="itemColumns"/>
+        FROM sys_schedule_item
+        WHERE deleted = 0
+          AND NOT (
+            item_type = 'TASK'
+            AND start_at IS NULL
+            AND end_at IS NULL
+            AND due_at IS NULL
+          )
+          AND COALESCE(start_at, end_at, due_at) IS NOT NULL
+          AND COALESCE(start_at, end_at, due_at) &lt;= #{endDate}
+          AND COALESCE(end_at, start_at, due_at) &gt;= #{startDate}
+        <if test="itemType != null and itemType != ''">
+            AND item_type = #{itemType}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="priority != null and priority != ''">
+            AND priority = #{priority}
+        </if>
+        <if test="categoryId != null">
+            AND category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+              title LIKE CONCAT('%', #{keyword}, '%')
+              OR IFNULL(description, '') LIKE CONCAT('%', #{keyword}, '%')
+              OR IFNULL(location, '') LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY
+            CASE priority WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 ELSE 2 END,
+            COALESCE(start_at, due_at, end_at) ASC,
+            sort_order ASC,
+            id ASC
+    </select>
+
+    <select id="selectInboxItems" resultMap="scheduleItemMap">
+        SELECT <include refid="itemColumns"/>
+        FROM sys_schedule_item
+        WHERE deleted = 0
+          AND item_type = 'TASK'
+          AND start_at IS NULL
+          AND end_at IS NULL
+          AND due_at IS NULL
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="priority != null and priority != ''">
+            AND priority = #{priority}
+        </if>
+        <if test="categoryId != null">
+            AND category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+              title LIKE CONCAT('%', #{keyword}, '%')
+              OR IFNULL(description, '') LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY
+            CASE priority WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 ELSE 2 END,
+            sort_order ASC,
+            create_time DESC,
+            id DESC
+    </select>
+
+    <!-- Effective items only: exclude deleted + CANCELLED from stats aggregates. -->
+    <select id="selectMonthStatistics" resultType="map">
+        SELECT
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN priority = 'HIGH' THEN 1 ELSE 0 END) AS highPriorityCount,
+            SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS inProgressCount,
+            SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedCount
+        FROM sys_schedule_item
+        WHERE deleted = 0
+          AND status &lt;&gt; 'CANCELLED'
+          AND NOT (
+            item_type = 'TASK'
+            AND start_at IS NULL
+            AND end_at IS NULL
+            AND due_at IS NULL
+          )
+          AND COALESCE(start_at, end_at, due_at) IS NOT NULL
+          AND COALESCE(start_at, end_at, due_at) &lt;= #{endDate}
+          AND COALESCE(end_at, start_at, due_at) &gt;= #{startDate}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_schedule_item (
+            title, item_type, description, status, priority,
+            start_at, end_at, due_at, all_day, category_id, related_plan_id,
+            location, sort_order, deleted
+        ) VALUES (
+            #{title}, #{itemType}, #{description}, #{status}, #{priority},
+            #{startAt}, #{endAt}, #{dueAt}, #{allDay}, #{categoryId}, #{relatedPlanId},
+            #{location}, #{sortOrder}, 0
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE sys_schedule_item
+        SET title = #{title},
+            item_type = #{itemType},
+            description = #{description},
+            status = #{status},
+            priority = #{priority},
+            start_at = #{startAt},
+            end_at = #{endAt},
+            due_at = #{dueAt},
+            all_day = #{allDay},
+            category_id = #{categoryId},
+            related_plan_id = #{relatedPlanId},
+            location = #{location},
+            sort_order = #{sortOrder}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateStatus">
+        UPDATE sys_schedule_item
+        SET status = #{status}
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="softDelete">
+        UPDATE sys_schedule_item
+        SET deleted = 1
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="clearRelatedPlanId">
+        UPDATE sys_schedule_item
+        SET related_plan_id = NULL
+        WHERE related_plan_id = #{planId}
+          AND deleted = 0
+          AND item_type = 'TASK'
+    </update>
+
+    <select id="selectActivePlans" resultMap="scheduleItemMap">
+        SELECT <include refid="itemColumns"/>
+        FROM sys_schedule_item
+        WHERE deleted = 0
+          AND item_type = 'PLAN'
+          AND status &lt;&gt; 'CANCELLED'
+        ORDER BY COALESCE(start_at, create_time) DESC, id DESC
+    </select>
+</mapper>
