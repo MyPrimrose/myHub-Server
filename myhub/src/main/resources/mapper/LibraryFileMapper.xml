@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myhub.mapper.LibraryFileMapper">
+    <resultMap id="fileMap" type="com.myhub.entity.LibraryFile">
+        <id property="id" column="id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="folderId" column="folder_id"/>
+        <result property="name" column="name"/>
+        <result property="originalName" column="original_name"/>
+        <result property="storageKey" column="storage_key"/>
+        <result property="fileExtension" column="file_extension"/>
+        <result property="mimeType" column="mime_type"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="contentHash" column="content_hash"/>
+        <result property="isFavorite" column="is_favorite"/>
+        <result property="lastAccessTime" column="last_access_time"/>
+        <result property="accessCount" column="access_count"/>
+        <result property="deleted" column="deleted"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="cols">
+        id, owner_id, folder_id, name, original_name, storage_key, file_extension, mime_type,
+        file_size, content_hash, is_favorite, last_access_time, access_count, deleted, create_time, update_time
+    </sql>
+
+    <sql id="pageWhere">
+        owner_id = #{ownerId} AND deleted = 0
+        <if test="uncategorized">AND folder_id IS NULL</if>
+        <if test="!uncategorized and folderId != null">AND folder_id = #{folderId}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR original_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="favorite != null and favorite">AND is_favorite = 1</if>
+        <if test="favorite != null and !favorite">AND is_favorite = 0</if>
+    </sql>
+
+    <select id="selectById" resultMap="fileMap">
+        SELECT <include refid="cols"/> FROM sys_library_file
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </select>
+
+    <select id="selectByFolderAndName" resultMap="fileMap">
+        SELECT <include refid="cols"/> FROM sys_library_file
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND name = #{name}
+        <choose>
+            <when test="folderId == null">AND folder_id IS NULL</when>
+            <otherwise>AND folder_id = #{folderId}</otherwise>
+        </choose>
+        LIMIT 1
+    </select>
+
+    <select id="selectPage" resultMap="fileMap">
+        SELECT <include refid="cols"/> FROM sys_library_file
+        <where><include refid="pageWhere"/></where>
+        ORDER BY is_favorite DESC, update_time DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(*) FROM sys_library_file
+        <where><include refid="pageWhere"/></where>
+    </select>
+
+    <select id="selectRecent" resultMap="fileMap">
+        SELECT <include refid="cols"/> FROM sys_library_file
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND last_access_time IS NOT NULL
+        ORDER BY last_access_time DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectFavorites" resultMap="fileMap">
+        SELECT <include refid="cols"/> FROM sys_library_file
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND is_favorite = 1
+        ORDER BY update_time DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectByFolder" resultMap="fileMap">
+        SELECT <include refid="cols"/> FROM sys_library_file
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND folder_id = #{folderId}
+    </select>
+
+    <select id="countByOwner" resultType="int">
+        SELECT COUNT(*) FROM sys_library_file WHERE owner_id = #{ownerId} AND deleted = 0
+    </select>
+
+    <select id="countByFolder" resultType="int">
+        SELECT COUNT(*) FROM sys_library_file
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND folder_id = #{folderId}
+    </select>
+
+    <select id="sumSizeByOwner" resultType="long">
+        SELECT IFNULL(SUM(file_size), 0) FROM sys_library_file
+        WHERE owner_id = #{ownerId} AND deleted = 0
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_library_file(
+            owner_id, folder_id, name, original_name, storage_key, file_extension, mime_type,
+            file_size, content_hash, is_favorite, access_count, deleted
+        ) VALUES (
+            #{ownerId}, #{folderId}, #{name}, #{originalName}, #{storageKey}, #{fileExtension}, #{mimeType},
+            #{fileSize}, #{contentHash}, #{isFavorite}, 0, 0
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE sys_library_file
+        SET name = #{name},
+            folder_id = #{folderId},
+            original_name = #{originalName},
+            storage_key = #{storageKey},
+            file_extension = #{fileExtension},
+            mime_type = #{mimeType},
+            file_size = #{fileSize},
+            content_hash = #{contentHash},
+            is_favorite = #{isFavorite}
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+
+    <update id="updateFavorite">
+        UPDATE sys_library_file SET is_favorite = #{favorite}
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+
+    <update id="updateFolder">
+        UPDATE sys_library_file SET folder_id = #{folderId}
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+
+    <update id="softDelete">
+        UPDATE sys_library_file SET deleted = 1
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+
+    <update id="softDeleteBatch">
+        UPDATE sys_library_file SET deleted = 1
+        WHERE owner_id = #{ownerId} AND deleted = 0
+          AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </update>
+
+    <update id="moveFolderFilesToParent">
+        UPDATE sys_library_file SET folder_id = #{targetFolderId}
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND folder_id = #{folderId}
+    </update>
+
+    <update id="markAccessed">
+        UPDATE sys_library_file
+        SET last_access_time = NOW(), access_count = access_count + 1
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+</mapper>

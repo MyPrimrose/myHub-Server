@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myhub.mapper.LibraryFolderMapper">
+    <resultMap id="folderMap" type="com.myhub.entity.LibraryFolder">
+        <id property="id" column="id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="name" column="name"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="deleted" column="deleted"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="cols">id, owner_id, name, parent_id, sort_order, deleted, create_time, update_time</sql>
+
+    <select id="selectById" resultMap="folderMap">
+        SELECT <include refid="cols"/> FROM sys_library_folder
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </select>
+
+    <select id="selectByOwner" resultMap="folderMap">
+        SELECT <include refid="cols"/> FROM sys_library_folder
+        WHERE owner_id = #{ownerId} AND deleted = 0
+        ORDER BY sort_order ASC, name ASC, id ASC
+    </select>
+
+    <select id="selectByParentAndName" resultMap="folderMap">
+        SELECT <include refid="cols"/> FROM sys_library_folder
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND name = #{name}
+        <choose>
+            <when test="parentId == null">AND parent_id IS NULL</when>
+            <otherwise>AND parent_id = #{parentId}</otherwise>
+        </choose>
+        LIMIT 1
+    </select>
+
+    <select id="countChildren" resultType="int">
+        SELECT COUNT(*) FROM sys_library_folder
+        WHERE owner_id = #{ownerId} AND deleted = 0 AND parent_id = #{parentId}
+    </select>
+
+    <select id="countByOwner" resultType="int">
+        SELECT COUNT(*) FROM sys_library_folder WHERE owner_id = #{ownerId} AND deleted = 0
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_library_folder(owner_id, name, parent_id, sort_order, deleted)
+        VALUES(#{ownerId}, #{name}, #{parentId}, #{sortOrder}, 0)
+    </insert>
+
+    <update id="update">
+        UPDATE sys_library_folder
+        SET name = #{name}, sort_order = #{sortOrder}
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+
+    <update id="softDelete">
+        UPDATE sys_library_folder SET deleted = 1
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+
+    <update id="updateParent">
+        UPDATE sys_library_folder SET parent_id = #{parentId}
+        WHERE id = #{id} AND owner_id = #{ownerId} AND deleted = 0
+    </update>
+</mapper>
